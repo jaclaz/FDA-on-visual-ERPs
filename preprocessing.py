@@ -13,7 +13,6 @@ import pandas as pd
 import mne
 from skfda.inference.anova import oneway_anova
 import scipy
-#from skfda.ml.classification import LogisticRegression
 from numpy import array
 from mne.preprocessing import (ICA, create_eog_epochs)
 
@@ -23,12 +22,12 @@ def Preprocessing(paziente, home_path):
     
     categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
     
-    filename = home_path+"\sub-"+str(paziente)+"\eeg\sub-"+str(paziente)+"_task-rsvp_events.csv"
+    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_events.csv"
     df_events = pd.read_csv(filename)
     
-    filename = home_path+"\sub-"+str(paziente)+"\eeg\sub-"+str(paziente)+"_task-rsvp_eeg.vhdr"
+    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_eeg.vhdr"
     raw=mne.io.read_raw_brainvision(filename, preload=True)
-    filtro=raw.copy().filter(0.1, 12, method='iir')
+    filtro=raw.copy().filter(0.1, 12, method='fir')
     reference=filtro.copy().set_eeg_reference(ref_channels='average')
     resample=reference.copy().resample(sfreq=250)
     notch=resample.copy().notch_filter(freqs=10)
@@ -46,23 +45,41 @@ def Preprocessing(paziente, home_path):
     annot=reconst_raw.annotations
     
     events, event_id = mne.events_from_annotations(reconst_raw)
-    
-    reject_criteria = dict(eeg=150e-6)    
-    epochs = mne.Epochs(reconst_raw, events, tmin=-0.1, tmax=1, reject=reject_criteria)
+    #reject_criteria = dict(eeg=150e-6)    
+    #epochs = mne.Epochs(reconst_raw, events, tmin=-0.1, tmax=1, reject=reject_criteria)
 
-    #epochs = mne.Epochs(reconst_raw, events, tmin=-0.1, tmax=1)
-    epochs.drop_bad(reject=reject_criteria)
-    epochs.plot_drop_log()
+    epochs = mne.Epochs(reconst_raw, events, tmin=-0.1, tmax=1)
+    #epochs.drop_bad(reject=reject_criteria)
+    #epochs.plot_drop_log()
     
-    epochs.save('sub-'+str(paziente)+'_task-rsvp_epochs.fif', overwrite=True)
+    #Estraggo solo le epochs che registrano l'esperimento
+    data=epochs['10001']
     
+    #Estraggo le macro-categorie e le ordino per poterle associare facilmente
+    #alle epochs corrispondenti
     
-    return epochs, categories, df_events, events, reconst_raw, annot
+    BU_categories = categories['All Bottom-up Categories']
+    obj_num=df_events['objectnumber']
+    ord_cat=[]
+    for ii in obj_num:
+        if ii != -1:
+            ord_cat.append(BU_categories[ii])
 
-for ii in range(10, 51):
-    epochs, categories, df_events, events, reconst_raw, cazzi = Preprocessing(ii, home_path)
+    new_events=data.events
+    prova=obj_num.to_numpy()
     
+    #imposto come codice evento i numeri associati ai concepts di THINGS
+    #MEMO: devo costruire un nuovo dizionario per gli events
+    
+    for ii in np.arange(24648):
+        new_events[ii][2]=prova[ii]
+        
+    #data.save('sub-'+str(paziente)+'_task-rsvp_epochs.fif', overwrite=True)
+    
+    return data, df_events, BU_categories, categories, ord_cat, new_events, obj_num, prova
 
+#for ii in range(41, 51):
+data, df_events, categories, tabellone, ord_cat, new_events, obj_num, prova = Preprocessing(4, home_path)
     
     
     
