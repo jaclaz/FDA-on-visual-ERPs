@@ -31,6 +31,21 @@ def find(target, matrix):
                 return True
     return False
 
+def DuplicateRemoval(matrix):
+    for ii in np.arange(len(matrix)):
+        nodup = list(dict.fromkeys(matrix[ii]))
+        matrix[ii]=nodup
+        
+def CreateMissingMatrix(BU_categories,categories_matrix):
+    missing=[]
+    for idx in np.arange(len(BU_categories)):
+        if not find(idx,categories_matrix):
+            missing.append(BU_categories[idx])
+    return missing
+
+categories_name=['animal','bird','body part','clothing','clothing accessory','container','dessert','drink',
+'electronic device','food','fruit','furniture','home decor','insect','kitchen appliance','kitchen tool','medical equipment',
+'musical instrument','office supply','part of car','plant','sports equipment','tool','toy','vegetable','vehicle','weapon']
 
 categories_matrix=[]
 animal_idx=categorization(['animal','sea creature','fish','dog','reptile','crustacean','amphibian','pet','rodent'],categories_matrix)
@@ -64,7 +79,20 @@ weapon_idx=categorization(['weapon','ammunition','gun accessory'],categories_mat
 categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
 BU_categories = categories['All Bottom-up Categories']
 
-missing=[]
-for idx in np.arange(len(BU_categories)):
-    if not find(idx,categories_matrix):
-        missing.append(BU_categories[idx])
+#rimuovo i duplicati e salvo come dataframe per usarlo con le epochs
+DuplicateRemoval(categories_matrix)  
+categories_df=pd.DataFrame(categories_matrix,categories_name)
+categories_df.to_csv('cat_dataframe.csv')
+
+#gli indici delle immagini non ancora categorizzate
+missing=CreateMissingMatrix(BU_categories,categories_matrix)
+
+
+
+
+
+
+
+
+
+

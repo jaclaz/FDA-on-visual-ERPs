@@ -7,26 +7,11 @@ Created on Sun Sep 25 17:22:18 2022
 
 import numpy as np
 import os
-from scipy.stats import f_oneway
-import skfda
 import pandas as pd
 import mne
-from skfda.inference.anova import oneway_anova
-import scipy
-from numpy import array
-from mne.preprocessing import (ICA, create_eog_epochs)
-import matplotlib.pyplot as plt
+from mne.preprocessing import ICA
 
-home_path = os.path.abspath(os.getcwd())
-
-def Preprocessing(paziente, home_path):
-    
-    categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
-    
-    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_events.csv"
-    df_events = pd.read_csv(filename)
-    
-    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_eeg.vhdr"
+def Preprocessing(filename):
     raw=mne.io.read_raw_brainvision(filename, preload=True)
     filtro=raw.copy().filter(0.1, 12, method='iir')
     reference=filtro.copy().set_eeg_reference(ref_channels='average')
@@ -46,45 +31,58 @@ def Preprocessing(paziente, home_path):
     #Rimuovo il canale di reference per evitare che venga conteggiato nelle epochs rimosse
     final_raw=reconst_raw.drop_channels('Reference')
     
-    events, event_id = mne.events_from_annotations(final_raw)
-    #events, event_id = mne.events_from_annotations(raw)
-    #reject_criteria = dict(eeg=150e-6)    
+    return final_raw
+
+def Start(paziente, home_path):
+    
+    categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
+    
+    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_events.csv"
+    df_events = pd.read_csv(filename)
+    
+    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_eeg.vhdr"
+    
+    final_raw=Preprocessing(filename)
+    events, event_id = mne.events_from_annotations(final_raw)    
 
     epochs = mne.Epochs(final_raw, events, tmin=-0.1, tmax=1)
-    #epochs = mne.Epochs(raw, events, tmin=-0.1, tmax=1)
-    #epochs.drop_bad(reject=reject_criteria)
-    #epochs.plot_drop_log()
     
     #Estraggo solo le epochs che registrano l'esperimento
     data=epochs['10001']
+    
     #Estraggo le macro-categorie e le ordino per poterle associare facilmente
     #alle epochs corrispondenti
-    
     BU_categories = categories['All Bottom-up Categories']
     obj_num=df_events['objectnumber']
-    ord_cat=[]
-    for ii in obj_num:
-        if ii != -1:
-            ord_cat.append(BU_categories[ii])
 
     new_events=data.events
     prova=obj_num.to_numpy()
     
     #imposto come codice evento i numeri associati ai concepts di THINGS
-    #MEMO: devo costruire un nuovo dizionario per gli events
     
     for ii in np.arange(len(new_events[:])):
         new_events[ii][2]=prova[ii]
         
+    #nuovo dizionario per gli events con i concepts associati alle macro-categorie
+    cat_dataframe = pd.read_csv(home_path+'\cat_dataframe.csv',index_col=0)
+    new_dict=cat_dataframe.T.to_dict(orient='list')
+    data.event_id=new_dict
+    
+    #elimino le epochs con ptp amplitude > 150 microvolt
+    reject_criteria = dict(eeg=150e-6)
+    data.drop_bad(reject=reject_criteria)
+    data.plot_drop_log()
+    
     #data.save('sub-'+str(paziente)+'_task-rsvp_epochs.fif', overwrite=True)
     
-    return data, df_events, BU_categories, categories, ord_cat, new_events, obj_num, prova
+    return data, df_events, BU_categories, categories, new_events, obj_num, prova
+
+
+home_path = os.path.abspath(os.getcwd())
 
 #for ii in range(41, 51):
-data, df_events, categories, tabellone, ord_cat, new_events, obj_num, prova = Preprocessing(4, home_path)
+data, df_events, categories, tabellone, new_events, obj_num, prova = Start(4, home_path)
         
-    
-    
     
     
     
