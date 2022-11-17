@@ -33,14 +33,25 @@ def Preprocessing(filename):
     
     return final_raw
 
+def column(matrix, i):
+    return [row[i] for row in matrix]
+
 def Start(paziente, home_path):
     
     categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
     
-    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_events.csv"
+    if paziente<10:
+        filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_events.csv"
+    if paziente>=10:
+        filename = home_path+"\sub-"+str(paziente)+"\eeg\sub-"+str(paziente)+"_task-rsvp_events.csv"        
     df_events = pd.read_csv(filename)
     
-    filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_eeg.vhdr"
+    
+    if paziente<10:
+        filename = home_path+"\sub-0"+str(paziente)+"\eeg\sub-0"+str(paziente)+"_task-rsvp_eeg.vhdr"
+    if paziente>=10:
+        filename = home_path+"\sub-"+str(paziente)+"\eeg\sub-"+str(paziente)+"_task-rsvp_eeg.vhdr"
+    
     
     final_raw=Preprocessing(filename)
     events, event_id = mne.events_from_annotations(final_raw)    
@@ -56,32 +67,55 @@ def Start(paziente, home_path):
     obj_num=df_events['objectnumber']
 
     new_events=data.events
-    prova=obj_num.to_numpy()
+    num=obj_num.to_numpy()
     
     #imposto come codice evento i numeri associati ai concepts di THINGS
     
     for ii in np.arange(len(new_events[:])):
-        new_events[ii][2]=prova[ii]
+        new_events[ii][2]=num[ii]
         
     #nuovo dizionario per gli events con i concepts associati alle macro-categorie
     cat_dataframe = pd.read_csv(home_path+'\cat_dataframe.csv',index_col=0)
     new_dict=cat_dataframe.T.to_dict(orient='list')
-    data.event_id=new_dict
+    clean_dict={}
+    
+    k=0
+    for key_name in new_dict:
+        items_cleaned = [item for item in new_dict[key_name] if not np.isnan(item)]
+        clean_dict[key_name] = items_cleaned
+        clean_dict[key_name] = [int(val) for val in clean_dict[key_name]]
+        j=0
+        for ii in column(new_events,2):
+            if ii in clean_dict[key_name]:
+                new_events[j][2]=k
+            j+=1   
+        k+=1
+        
+    k=0
+    for key_name in clean_dict:
+        clean_dict[key_name]=k
+        k+=1
+    
+    clean_dict['trial']=-1
+        
+    data.event_id=clean_dict
     
     #elimino le epochs con ptp amplitude > 150 microvolt
     reject_criteria = dict(eeg=150e-6)
     data.drop_bad(reject=reject_criteria)
-    data.plot_drop_log()
+    #data.plot_drop_log()
     
-    #data.save('sub-'+str(paziente)+'_task-rsvp_epochs.fif', overwrite=True)
+    pazienti_no=[1, 6, 18, 23]
+    if data.drop_log_stats()<80 and paziente not in pazienti_no:
+        data.save('preprocessed\sub-'+str(paziente)+'_task-rsvp-epo.fif', overwrite=True)
     
-    return data, df_events, BU_categories, categories, new_events, obj_num, prova
+    return data, cat_dataframe, clean_dict, events, new_events, df_events
 
 
 home_path = os.path.abspath(os.getcwd())
 
-#for ii in range(41, 51):
-data, df_events, categories, tabellone, new_events, obj_num, prova = Start(4, home_path)
+for ii in range(1, 51):
+    data, prova, dictio,a,b,c = Start(ii, home_path)
         
     
     
