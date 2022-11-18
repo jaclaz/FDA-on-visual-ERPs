@@ -101,20 +101,20 @@ def Start(paziente, home_path):
     data.event_id=clean_dict
     
     #elimino le epochs con ptp amplitude > 150 microvolt
-    reject_criteria = dict(eeg=150e-6)
-    data.drop_bad(reject=reject_criteria)
+    #reject_criteria = dict(eeg=150e-6)
+    #data.drop_bad(reject=reject_criteria)
     #data.plot_drop_log()
     
-    pazienti_no=[1, 6, 18, 23]
-    if data.drop_log_stats()<80 and paziente not in pazienti_no:
-        data.save('preprocessed\sub-'+str(paziente)+'_task-rsvp-epo.fif', overwrite=True)
+    # pazienti_no=[1, 6, 18, 23]
+    # if data.drop_log_stats()<80 and paziente not in pazienti_no:
+    #     data.save('preprocessed\sub-'+str(paziente)+'_task-rsvp-epo.fif', overwrite=True)
     
     return data, cat_dataframe, clean_dict, events, new_events, df_events
 
 
 home_path = os.path.abspath(os.getcwd())
 
-for ii in range(1, 51):
+for ii in range(4, 5):
     data, prova, dictio,a,b,c = Start(ii, home_path)
         
     
