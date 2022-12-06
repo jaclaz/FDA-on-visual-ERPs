@@ -10,6 +10,7 @@ import os
 import pandas as pd
 import mne
 from mne.preprocessing import ICA
+from autoreject import get_rejection_threshold
 
 def Preprocessing(filename):
     raw=mne.io.read_raw_brainvision(filename, preload=True)
@@ -36,7 +37,7 @@ def Preprocessing(filename):
 def column(matrix, i):
     return [row[i] for row in matrix]
 
-def Start(paziente, home_path):
+def Start(paziente, home_path,reject):
     
     categories = pd.read_csv(r"C:\Users\Asus\Downloads\things_concepts.tsv", sep='\t')
     
@@ -54,6 +55,7 @@ def Start(paziente, home_path):
     
     
     final_raw=Preprocessing(filename)
+
     events, event_id = mne.events_from_annotations(final_raw)    
 
     epochs = mne.Epochs(final_raw, events, tmin=-0.1, tmax=1)
@@ -93,8 +95,6 @@ def Start(paziente, home_path):
                 new_events[j][2]=k
             k+=1
         j+=1   
-        
-    print(new_events)    
     k=0
     for key_name in clean_dict:
         clean_dict[key_name]=k
@@ -105,22 +105,24 @@ def Start(paziente, home_path):
     data.event_id=clean_dict
 
     #elimino le epochs con ptp amplitude > 150 microvolt
-    reject_criteria = dict(eeg=150e-6)
-    data.drop_bad(reject=reject_criteria)
+
+    reject_tresh = get_rejection_threshold(data)  
+    #reject_criteria = dict(eeg=150e-6)
+    data.drop_bad(reject=reject_tresh)
     data.plot_drop_log()
-    
+    reject.append(reject_tresh['eeg'])
     pazienti_no=[1, 6, 18, 23]
     if data.drop_log_stats()<80 and paziente not in pazienti_no:
-        data.save('preprocessed\sub-'+str(paziente)+'_task-rsvp-epo.fif', overwrite=True)
+        data.save('autoreject\sub-'+str(paziente)+'_task-rsvp-epo.fif', overwrite=True)
     
-    return data, cat_dataframe, clean_dict, new_dict, new_events, df_events,num
+    return data, cat_dataframe, clean_dict, new_dict, new_events, df_events,num,reject_tresh,reject
 
 
 home_path = os.path.abspath(os.getcwd())
+reject=[]
+for ii in range(48, 49):
+    data, prova, dictio,a,b,c,num,tresh,reject = Start(ii, home_path,reject)
 
-for ii in range(1, 51):
-    data, prova, dictio,a,b,c,num = Start(ii, home_path)
-        
     
     
     

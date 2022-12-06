@@ -21,4 +21,4 @@ def filter_analysis(paziente):
                              filter_length='auto')
     mne.viz.plot_filter(filt, 1000, compensate=True)
     
-filter_analysis(5)
+filter_analysis(4)
