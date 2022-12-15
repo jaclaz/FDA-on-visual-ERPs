@@ -39,7 +39,6 @@ channels=['Fp1','Fz','F3','F7','FT9','FC5','FC1','C3','T7','TP9','CP5','CP1',
           'P6','P2','CPz','CP4','TP8','C6','C2','FC4','FT8','F6','AF8','AF4',
           'F2','FCz']
 
-#channels=['Oz']
 directory_csv=home_path + '\dataframes'
     
 # for ch in channels:
@@ -79,7 +78,8 @@ for cat in ['animal','body','vehicle','tool','food']:
         data=df.iloc[:,2:]
         datagrid=skfda.FDataGrid(data_matrix=data.T)
         basis = skfda.representation.basis.BSpline(n_basis=10)
-        cat_basis = datagrid.to_basis(basis)
+        smoother=skfda.preprocessing.smoothing.BasisSmoother(basis, smoothing_parameter=1e-5)
+        cat_basis = smoother.fit_transform(datagrid)
         fig=cat_basis.plot()
         plt.title('Channel ' + ch + ' ' + cat)
         plt.savefig(home_path + '\\Plots\\basis_rep\\'+cat+'\\'+ch,dpi=160)
@@ -97,28 +97,36 @@ def Basis_rep(cat,ch):
     df=pd.read_csv(home_path+'\\dataframes\\'+cat+'\\'+cat+'_'+ch+'.csv')
     data=df.iloc[:,2:]
     datagrid=skfda.FDataGrid(data_matrix=data.T)
-    basis = skfda.representation.basis.BSpline(n_basis=10)
-    cat_basis = datagrid.to_basis(basis)
+    basis = skfda.representation.basis.BSpline(n_basis=18)
+    smoother=skfda.preprocessing.smoothing.BasisSmoother(basis, smoothing_parameter=1e-5)
+    cat_basis = smoother.fit_transform(datagrid)
+    # cat_basis = datagrid.to_basis(basis)
     
-    # fdBoxplot = Boxplot(cat_basis.to_grid())
-    # non_outliers = [i for (i, b) in zip(np.arange(len(fdBoxplot.outliers)), fdBoxplot.outliers) if not b]
-    # cat_basis=cat_basis[non_outliers]
-    return cat_basis
+    # fig=cat_basis.plot()
+    # plt.title('Channel ' + ch + ' ' + cat)
+    
+    
+    fdBoxplot = Boxplot(cat_basis.to_grid())
+    non_outliers = [i for (i, b) in zip(np.arange(len(fdBoxplot.outliers)), fdBoxplot.outliers) if not b]
+    cat_basis_no=cat_basis[non_outliers]
+    outliers = [i for (i, b) in zip(np.arange(len(fdBoxplot.outliers)), fdBoxplot.outliers) if b]
+    
+    return cat_basis_no, outliers
 
 p_val=pd.DataFrame(index=channels,columns=['p_val'])
 
 for ch in channels:
-    animal=Basis_rep('animal', ch)
-    body=Basis_rep('body', ch)
-    vehicle=Basis_rep('vehicle', ch)
-    tool=Basis_rep('tool', ch)
-    food=Basis_rep('food', ch)
+    animal, an_out=Basis_rep('animal', ch)
+    body, body_out=Basis_rep('body', ch)
+    vehicle, v_out=Basis_rep('vehicle', ch)
+    tool, t_out=Basis_rep('tool', ch)
+    food, f_out=Basis_rep('food', ch)
     
     v_n, p = oneway_anova(animal, body, vehicle, tool, food)
     
     p_val.loc[ch]=p
     
-p_val.to_csv('p_values.csv')
+p_val.to_csv('p_values_2.csv')
 
 def reversed_enumerate(l):
     return zip(range(len(l)-1, -1, -1), reversed(l))
